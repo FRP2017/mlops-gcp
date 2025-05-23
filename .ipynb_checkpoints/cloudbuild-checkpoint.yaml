@@ -1,0 +1,51 @@
+steps:
+# Paso 1: Construir y subir la imagen base de los componentes (si ha cambiado el Dockerfile base)
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'build_and_push_base_image'
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/mlops-third-iris-repo/iris-base:latest', '.']
+  dir: '.' # Desde la raíz del repo
+  waitFor: ['-'] # Ejecutar inmediatamente
+  # Solo ejecuta este paso si el Dockerfile de la imagen base o los componentes han cambiado
+  # Opcional: Usar gcloud-build-local --dry-run y un trigger más específico
+  # Esto es para asegurar que la imagen base siempre esté actualizada
+
+# Paso 2: Construir y subir la imagen del predictor de Batch (si ha cambiado)
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'build_and_push_predictor_image'
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/mlops-third-iris-repo/iris-batch-predictor:latest', '.']
+  dir: 'batch_predictor'
+  waitFor: ['-'] # Ejecutar inmediatamente
+  # Solo ejecuta este paso si el Dockerfile del predictor ha cambiado
+
+# Paso 3: Compilar la pipeline de Kubeflow
+- name: 'python:3.9'
+  id: 'compile_pipeline'
+  entrypoint: 'python'
+  args: ['pipelines/iris_mlops_pipeline.py']
+  dir: '.' # Desde la raíz del repo
+  waitFor: ['build_and_push_base_image', 'build_and_push_predictor_image'] # Asegurar que las imágenes existan antes de compilar
+
+# Paso 4: Subir la definición de la pipeline compilada a GCS
+- name: 'gcr.io/cloud-builders/gsutil'
+  id: 'upload_pipeline_definition'
+  args: ['cp', 'iris_mlops_pipeline.json', 'gs://mlops-third-artifacts-bucket/iris-pipelines/iris_mlops_pipeline.json']
+  waitFor: ['compile_pipeline']
+
+# Paso 5: Desencadenar la ejecución de la pipeline en Vertex AI Pipelines
+# Para CI/CD, normalmente desplegarías una versión de la pipeline, no la ejecutarías directamente.
+# Aquí la ejecutamos para demostrar el flujo. En un entorno real,
+# esto podría ser un trigger manual o un cron job para el reentrenamiento.
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'run_vertex_pipeline'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      gcloud ai pipelines run \
+        --pipeline-root=gs://mlops-third-artifacts-bucket/iris-pipelines \
+        --template-path=gs://mlops-third-artifacts-bucket/iris-pipelines/iris_mlops_pipeline.json \
+        --project=$PROJECT_ID \
+        --location=us-central1 \
+        --display-name="iris-mlops-run-$(date +%Y%m%d%H%M%S)" \
+        --parameter-values='project_id=$PROJECT_ID,region=us-central1,bq_dataset_name=mlops_experiment,bq_training_table_name=iris_training_data,bq_prediction_table_name=iris_prediction_data,accuracy_threshold=0.95,f1_threshold=0.90,model_display_name=mlops-third-iris-model,batch_predict_output_uri=bq://mlops-third/mlops_experiment/iris_predictions,model_monitoring_display_name=mlops-third-iris-monitoring,drift_email_recipients=your-email@example.com,log_sink_pubsub_topic=projects/$PROJECT_ID/topics/mlops-third-retrain-topic,model_monitoring_bq_dataset=mlops_experiment_monitoring'
+  waitFor: ['upload_pipeline_definition']

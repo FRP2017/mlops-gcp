@@ -1,0 +1,15 @@
+name: Model Training
+description: Entrena un modelo Random Forest Classifier.
+inputs:
+  - {name: preprocessed_training_data, type: Dataset, description: 'Path to preprocessed training data'}
+outputs:
+  - {name: trained_model, type: Model, description: 'Path to trained model'}
+implementation:
+  container:
+    image: us-central1-docker.pkg.dev/mlops-third/mlops-third-iris-repo/iris-base:latest # Se creará más adelante
+    command: [
+      python,
+      /src/main.py,
+      --preprocessed_training_data_path, {inputPath: preprocessed_training_data},
+      --model_output_path, {outputPath: trained_model},
+    ]

@@ -1,0 +1,3 @@
+google-cloud-aiplatform==1.49.0 # Usa la versión actual o compatible
+google-cloud-bigquery
+google-cloud-storage

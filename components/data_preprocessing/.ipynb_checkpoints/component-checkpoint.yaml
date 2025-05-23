@@ -1,0 +1,21 @@
+name: Data Preprocessing
+description: Realiza escalado de características en los conjuntos de entrenamiento y prueba.
+inputs:
+  - {name: training_data, type: Dataset, description: 'Path to original training data'}
+  - {name: test_data, type: Dataset, description: 'Path to original test data'}
+outputs:
+  - {name: preprocessed_training_data, type: Dataset, description: 'Path to preprocessed training data'}
+  - {name: preprocessed_test_data, type: Dataset, description: 'Path to preprocessed test data'}
+  - {name: scaler_model, type: Model, description: 'Path to saved scaler model'}
+implementation:
+  container:
+    image: us-central1-docker.pkg.dev/mlops-third/mlops-third-iris-repo/iris-base:latest # Se creará más adelante
+    command: [
+      python,
+      /src/main.py,
+      --training_data_path, {inputPath: training_data},
+      --test_data_path, {inputPath: test_data},
+      --preprocessed_training_data_path, {outputPath: preprocessed_training_data},
+      --preprocessed_test_data_path, {outputPath: preprocessed_test_data},
+      --scaler_output_path, {outputPath: scaler_model},
+    ]

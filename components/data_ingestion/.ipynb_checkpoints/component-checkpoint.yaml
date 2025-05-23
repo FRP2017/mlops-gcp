@@ -1,0 +1,21 @@
+name: Data Ingestion
+description: Ingiere datos de BigQuery y los divide en conjuntos de entrenamiento y prueba.
+inputs:
+  - {name: project_id, type: String, description: 'GCP project ID'}
+  - {name: bq_dataset, type: String, description: 'BigQuery dataset name'}
+  - {name: bq_table, type: String, description: 'BigQuery table name'}
+outputs:
+  - {name: training_data, type: Dataset, description: 'Path to store training data'}
+  - {name: test_data, type: Dataset, description: 'Path to store test data'}
+implementation:
+  container:
+    image: us-central1-docker.pkg.dev/mlops-third/mlops-third-iris-repo/iris-base:latest # Se creará más adelante
+    command: [
+      python,
+      /src/main.py,
+      --project_id, {inputValue: project_id},
+      --bq_dataset, {inputValue: bq_dataset},
+      --bq_table, {inputValue: bq_table},
+      --train_output_path, {outputPath: training_data},
+      --test_output_path, {outputPath: test_data},
+    ]

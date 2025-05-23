@@ -1,0 +1,22 @@
+name: Model Evaluation
+description: Evalúa el modelo entrenado y registra las métricas.
+inputs:
+  - {name: preprocessed_test_data, type: Dataset, description: 'Path to preprocessed test data'}
+  - {name: trained_model, type: Model, description: 'Path to trained model'}
+  - {name: accuracy_threshold, type: Float, description: 'Minimum accuracy for model approval'}
+  - {name: f1_threshold, type: Float, description: 'Minimum F1-score for model approval'}
+outputs:
+  - {name: metrics, type: Metrics, description: 'Evaluation metrics'}
+  - {name: model_blessed, type: String, description: 'Boolean indicating if model is blessed for deployment'}
+implementation:
+  container:
+    image: us-central1-docker.pkg.dev/mlops-third/mlops-third-iris-repo/iris-base:latest # Se creará más adelante
+    command: [
+      python,
+      /src/main.py,
+      --preprocessed_test_data_path, {inputPath: preprocessed_test_data},
+      --trained_model_path, {inputPath: trained_model},
+      --metrics_output_path, {outputPath: metrics},
+      --accuracy_threshold, {inputValue: accuracy_threshold},
+      --f1_threshold, {inputValue: f1_threshold},
+    ]
